@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:dio/dio.dart';
@@ -5,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:progress_indicators/progress_indicators.dart';
 import 'package:weather_app/Model/CurrentCityDataModel.dart';
 import 'package:intl/intl.dart';
+import 'package:weather_app/Model/ForecastDaysModel.dart';
 
 void main() {
   runApp(MaterialApp(
@@ -22,7 +24,11 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   late Future<CurrentCityDataModel> currentWeatherFuture;
+  late StreamController<List<ForecastDaysModel>> streamForcastDays;
+
   var cityName = 'london';
+  var lon;
+  var lat;
 
   TextEditingController textEditingController = new TextEditingController();
 
@@ -31,6 +37,7 @@ class _MyAppState extends State<MyApp> {
     // TODO: implement initState
     super.initState();
     currentWeatherFuture = SendRequestCurrentWeather(cityName);
+    streamForcastDays = StreamController<List<ForecastDaysModel>>();
   }
 
   @override
@@ -108,7 +115,7 @@ class _MyAppState extends State<MyApp> {
                         ),
                         Padding(
                           padding: const EdgeInsets.only(top: 50),
-                          child: Text(cityDataModel!.cityName,style: TextStyle(color: Colors.white, fontSize: 35)),
+                          child: Text(cityDataModel.cityName,style: TextStyle(color: Colors.white, fontSize: 35)),
                         ),
                         Padding(
                             padding: const EdgeInsets.only(top: 20),
@@ -524,6 +531,9 @@ class _MyAppState extends State<MyApp> {
     var response = await Dio().get('https://api.openweathermap.org/data/2.5/weather',
                    queryParameters: {'q': cityName , 'appid':apiKey , 'units' : 'metric'},
     );
+
+    lon = response.data["coord"]["lon"];
+    lat = response.data["coord"]["lat"];
     
     var dataModel = CurrentCityDataModel(
         response.data["name"],
@@ -543,5 +553,44 @@ class _MyAppState extends State<MyApp> {
         response.data["sys"]["sunset"]);
 
     return dataModel;
+}
+
+void SendRequest7DaysForecast(lat,lon) async{
+    List<ForecastDaysModel> list = [];
+
+    var apiKey = '12ce846fa9fb88deec949c001d8889fc';
+
+    try{
+      var response = await Dio().get(
+          "https://api.openweathermap.org/data/3.0/onecall",
+          queryParameters: {
+            'lat' : lat,
+            'lon' : lon,
+            'exclude' : 'minutely,hourly',
+            'appid' : apiKey,
+            'units' : 'metric'
+          });
+
+      final formatter = DateFormat.MMMd();
+
+      for(int i = 0; i < 8;i++){
+        var model = response.data['daily'][i];
+
+        var dt = formatter.format(new DateTime.fromMillisecondsSinceEpoch(
+            model['dt'] * 1000,
+            isUtc: true));
+
+        ForecastDaysModel forecastDaysModel = ForecastDaysModel(dt, model['temp']['day'],
+            model['weather'][0]['main'], model['weather'][0]['description']);
+
+        list.add(forecastDaysModel);
+      }
+
+      streamForcastDays.add(list);
+    }on DioError catch (e){
+      print(e.response!.statusCode);
+      print(e.message);
+
+    }
 }
 }
