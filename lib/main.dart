@@ -95,15 +95,22 @@ class _MyAppState extends State<MyApp> {
                             Padding(
                               padding: const EdgeInsets.only(right: 15),
                               child: ElevatedButton(
-                                  onPressed: () {}, child: Text('Find')),
+                                  onPressed: () {
+                                    setState(() {
+                                      SendRequestCurrentWeather(textEditingController.text);
+                                    });
+                                  },
+                                  child: Text('Find')),
                             ),
                             Expanded(
                               child: TextField(
                                 controller: textEditingController,
                                 decoration: InputDecoration(
+                                  hintStyle: TextStyle(color: Colors.white),
                                   hintText: "Enter City Name",
                                   border: UnderlineInputBorder(),
                                 ),
+                                style: TextStyle(color: Colors.white),
                               ),
                             ),
                           ],
